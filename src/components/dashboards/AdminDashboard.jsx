@@ -90,7 +90,7 @@ export default function AdminDashboard() {
                 <Sparkles className="w-8 h-8 text-purple-500 opacity-70 animate-pulse" />
               </h1>
               <p className="text-gray-600 mt-2 text-lg">
-                Manage your institution with AI-powered insightss
+                Manage your institution with AI-powered insights
               </p>
             </div>
           </div>
