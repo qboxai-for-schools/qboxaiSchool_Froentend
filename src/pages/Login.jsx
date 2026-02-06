@@ -10,6 +10,9 @@ export default function Login() {
   const [isOpen, setIsOpen] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
 
   const roles = [
     { id: "admin", title: "Admin", icon: Shield, color: "text-blue-600" },
@@ -22,13 +25,18 @@ export default function Login() {
     },
   ];
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (selectedRole) {
-      login(selectedRole);
-      navigate("/dashboard");
-    }
-  };
+    const handleLogin = (e) => {
+  e.preventDefault();
+
+  if (!email || !password || !selectedRole) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  login(selectedRole);
+  navigate("/dashboard");
+};
+
 
   const selectedRoleData = roles.find((r) => r.id === selectedRole);
 
@@ -57,8 +65,9 @@ export default function Login() {
               <input
                 type="email"
                 placeholder="name@example.com"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                defaultValue="demo@aierp.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -68,11 +77,12 @@ export default function Login() {
                 Password
               </label>
               <input
-                type="password"
-                placeholder="Enter your password"
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                defaultValue="demo123"
-              />
+               type="password"
+               placeholder="Enter your password"
+               value={password}
+               onChange={(e) => setPassword(e.target.value)}
+               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+             />
             </div>
 
             {/* Role Selector Dropdown */}
@@ -158,9 +168,9 @@ export default function Login() {
             {/* Login Button */}
             <button
               type="submit"
-              disabled={!selectedRole}
+              disabled={!email || !password || !selectedRole}
               className={`w-full py-3 rounded-xl font-semibold text-white transition-all ${
-                selectedRole
+                email && password && selectedRole
                   ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg"
                   : "bg-gray-300 cursor-not-allowed"
               }`}
