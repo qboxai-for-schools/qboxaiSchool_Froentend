@@ -13,7 +13,6 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-
   const roles = [
     { id: "admin", title: "Admin", icon: Shield, color: "text-blue-600" },
     { id: "teacher", title: "Teacher", icon: Users, color: "text-indigo-600" },
@@ -25,18 +24,17 @@ export default function Login() {
     },
   ];
 
-    const handleLogin = (e) => {
-  e.preventDefault();
+  const handleLogin = (e) => {
+    e.preventDefault();
 
-  if (!email || !password || !selectedRole) {
-    alert("Please fill all fields");
-    return;
-  }
+    if (!email || !password || !selectedRole) {
+      alert("Please fill all fields");
+      return;
+    }
 
-  login(selectedRole);
-  navigate("/dashboard");
-};
-
+    login(selectedRole);
+    navigate("/dashboard");
+  };
 
   const selectedRoleData = roles.find((r) => r.id === selectedRole);
 
@@ -47,12 +45,14 @@ export default function Login() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl font-bold text-white">AI</span>
+              <span className="text-2xl font-bold text-white">QB</span>
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
               Welcome Back
             </h1>
-            <p className="text-gray-600">Sign in to continue to AI ERP</p>
+            <p className="text-gray-600">
+              Sign in to continue to Qboxai-School
+            </p>
           </div>
 
           {/* Login Form */}
@@ -77,12 +77,12 @@ export default function Login() {
                 Password
               </label>
               <input
-               type="password"
-               placeholder="Enter your password"
-               value={password}
-               onChange={(e) => setPassword(e.target.value)}
-               className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-             />
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
 
             {/* Role Selector Dropdown */}
@@ -178,11 +178,6 @@ export default function Login() {
               Sign In
             </button>
           </form>
-
-          {/* Footer */}
-          <p className="text-center text-sm text-gray-600 mt-6">
-            Demo Mode - No authentication required
-          </p>
         </div>
       </div>
     </div>
