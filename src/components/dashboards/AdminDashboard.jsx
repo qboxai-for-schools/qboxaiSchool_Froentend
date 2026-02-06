@@ -86,7 +86,7 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-700 via-blue-600 to-purple-600 bg-clip-text text-transparent flex items-center gap-3">
-                Admin Dashboard
+                Qboxai-School
                 <Sparkles className="w-8 h-8 text-purple-500 opacity-70 animate-pulse" />
               </h1>
               <p className="text-gray-600 mt-2 text-lg">
