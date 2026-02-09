@@ -162,7 +162,7 @@ export default function StudentAssignments() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">
-            Weekly Submissions
+            Weekly Submissionss
           </h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={weeklyData}>
