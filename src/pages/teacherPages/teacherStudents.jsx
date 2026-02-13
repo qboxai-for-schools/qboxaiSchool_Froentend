@@ -1,4 +1,4 @@
-import { Users, TrendingUp, BookOpen } from "lucide-react";
+import { Users, TrendingUp, BookOpen, Mail, Phone, Eye, MessageSquare } from "lucide-react";
 import StatsCard from "../../components/StatsCard";
 import {
   BarChart,
@@ -26,6 +26,118 @@ const performanceData = [
   { student: "Emma", score: 88 },
   { student: "Alex", score: 95 },
 ];
+
+// Detailed student list
+const studentsList = [
+  {
+    id: 1,
+    rollNo: "2024001",
+    name: "John Smith",
+    email: "john.smith@school.com",
+    phone: "+1 234-567-8901",
+    attendance: 95,
+    avgScore: 85,
+    status: "Active",
+    lastActive: "2 hours ago",
+  },
+  {
+    id: 2,
+    rollNo: "2024002",
+    name: "Sarah Johnson",
+    email: "sarah.j@school.com",
+    phone: "+1 234-567-8902",
+    attendance: 98,
+    avgScore: 92,
+    status: "Active",
+    lastActive: "1 hour ago",
+  },
+  {
+    id: 3,
+    rollNo: "2024003",
+    name: "Mike Wilson",
+    email: "mike.w@school.com",
+    phone: "+1 234-567-8903",
+    attendance: 88,
+    avgScore: 78,
+    status: "Active",
+    lastActive: "5 hours ago",
+  },
+  {
+    id: 4,
+    rollNo: "2024004",
+    name: "Emma Davis",
+    email: "emma.d@school.com",
+    phone: "+1 234-567-8904",
+    attendance: 92,
+    avgScore: 88,
+    status: "Active",
+    lastActive: "3 hours ago",
+  },
+  {
+    id: 5,
+    rollNo: "2024005",
+    name: "Alex Brown",
+    email: "alex.b@school.com",
+    phone: "+1 234-567-8905",
+    attendance: 97,
+    avgScore: 95,
+    status: "Active",
+    lastActive: "30 mins ago",
+  },
+  {
+    id: 6,
+    rollNo: "2024006",
+    name: "Lisa Martinez",
+    email: "lisa.m@school.com",
+    phone: "+1 234-567-8906",
+    attendance: 90,
+    avgScore: 82,
+    status: "Active",
+    lastActive: "1 day ago",
+  },
+  {
+    id: 7,
+    rollNo: "2024007",
+    name: "David Lee",
+    email: "david.l@school.com",
+    phone: "+1 234-567-8907",
+    attendance: 85,
+    avgScore: 75,
+    status: "Needs Attention",
+    lastActive: "2 days ago",
+  },
+  {
+    id: 8,
+    rollNo: "2024008",
+    name: "Jessica Taylor",
+    email: "jessica.t@school.com",
+    phone: "+1 234-567-8908",
+    attendance: 94,
+    avgScore: 89,
+    status: "Active",
+    lastActive: "4 hours ago",
+  },
+];
+
+// Helper function to get attendance color
+const getAttendanceColor = (attendance) => {
+  if (attendance >= 90) return "text-green-600";
+  if (attendance >= 75) return "text-orange-600";
+  return "text-red-600";
+};
+
+// Helper function to get score color
+const getScoreColor = (score) => {
+  if (score >= 85) return "text-green-600 bg-green-50";
+  if (score >= 70) return "text-blue-600 bg-blue-50";
+  return "text-orange-600 bg-orange-50";
+};
+
+// Helper function to get status color
+const getStatusColor = (status) => {
+  if (status === "Active") return "bg-green-100 text-green-700";
+  return "bg-red-100 text-red-700";
+};
 
 export default function TeacherStudents() {
   return (
@@ -62,7 +174,7 @@ export default function TeacherStudents() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="glass-card rounded-2xl p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">
             Attendance
@@ -125,6 +237,136 @@ export default function TeacherStudents() {
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* NEW SECTION: Student List */}
+      <div className="glass-card rounded-2xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Student Directory
+          </h2>
+          <div className="flex gap-3">
+            <select className="px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option>All Students</option>
+              <option>Active</option>
+              <option>Needs Attention</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Search students..."
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">
+                  Roll No.
+                </th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">
+                  Student Name
+                </th>
+                <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">
+                  Contact
+                </th>
+                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">
+                  Attendance
+                </th>
+                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">
+                  Avg Score
+                </th>
+                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">
+                  Status
+                </th>
+                <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {studentsList.map((student) => (
+                <tr
+                  key={student.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                >
+                  <td className="py-4 px-4">
+                    <span className="font-mono text-sm text-gray-600">
+                      {student.rollNo}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div>
+                      <div className="font-semibold text-gray-800">
+                        {student.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Last active: {student.lastActive}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="w-3 h-3" />
+                        <span className="text-xs">{student.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="w-3 h-3" />
+                        <span className="text-xs">{student.phone}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <span
+                      className={`text-lg font-bold ${getAttendanceColor(
+                        student.attendance
+                      )}`}
+                    >
+                      {student.attendance}%
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-semibold ${getScoreColor(
+                        student.avgScore
+                      )}`}
+                    >
+                      {student.avgScore}%
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        student.status
+                      )}`}
+                    >
+                      {student.status}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex gap-2 justify-center">
+                      <button
+                        className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Profile"
+                      >
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </button>
+                      <button
+                        className="p-2 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Send Message"
+                      >
+                        <MessageSquare className="w-4 h-4 text-green-600" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
