@@ -2,51 +2,44 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
-import { Shield, GraduationCap, Users, ChevronDown } from "lucide-react";
+import { GraduationCap, Loader2, AlertCircle } from "lucide-react";
+import { loginUser } from "../services/authService";
 
 export default function Login() {
-  const [selectedRole, setSelectedRole] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [schoolCode, setSchoolCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const roles = [
-    {
-      id: "admin",
-      title: "Admin",
-      icon: Shield,
-      color: "text-blue-600",
-      gradient: "from-blue-500 to-indigo-600",
-    },
-    {
-      id: "teacher",
-      title: "Teacher",
-      icon: Users,
-      color: "text-indigo-600",
-      gradient: "from-indigo-500 to-purple-600",
-    },
-    {
-      id: "student",
-      title: "Student",
-      icon: GraduationCap,
-      color: "text-cyan-600",
-      gradient: "from-cyan-500 to-blue-600",
-    },
-  ];
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email || !password || !selectedRole) {
-      alert("Please fill all fields");
+    setError("");
+
+    if (!schoolCode || !email || !password) {
+      setError("Please fill all fields");
       return;
     }
-    login(selectedRole);
-    navigate("/dashboard");
-  };
 
-  const selectedRoleData = roles.find((r) => r.id === selectedRole);
+    setLoading(true);
+
+    try {
+      const result = await loginUser(schoolCode, email, password);
+
+      if (result.success) {
+        login(result.userData);
+        navigate("/dashboard");
+      } else {
+        setError(result.error);
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -68,7 +61,7 @@ export default function Login() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg mb-4 transform hover:scale-110 transition-transform">
-            <span className="text-white font-bold text-3xl">QB</span>
+            <GraduationCap className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
             Welcome Back
@@ -76,8 +69,31 @@ export default function Login() {
           <p className="text-gray-600">Sign in to continue to Qboxai-School</p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200 rounded-xl flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-red-800">{error}</p>
+          </div>
+        )}
+
         {/* Login Form */}
         <form onSubmit={handleLogin} className="space-y-6">
+          {/* School Code Input */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              School Code
+            </label>
+            <input
+              type="text"
+              placeholder="ABC-015"
+              value={schoolCode}
+              onChange={(e) => setSchoolCode(e.target.value)}
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/80 transition-all shadow-sm placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+
           {/* Email Input */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -88,7 +104,8 @@ export default function Login() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/80 transition-all shadow-sm placeholder:text-gray-400"
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/80 transition-all shadow-sm placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -102,85 +119,18 @@ export default function Login() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/80 transition-all shadow-sm placeholder:text-gray-400"
+              disabled={loading}
+              className="w-full px-4 py-3 rounded-xl backdrop-blur-sm bg-white/60 border border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/80 transition-all shadow-sm placeholder:text-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
-          {/* Role Selector Dropdown */}
-          <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Select Role
-            </label>
-            <button
-              type="button"
-              onClick={() => setIsOpen(!isOpen)}
-              className={`w-full px-4 py-3 rounded-xl backdrop-blur-sm border transition-all flex items-center justify-between shadow-sm ${
-                selectedRole
-                  ? "border-blue-400 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 ring-2 ring-blue-400/30"
-                  : "border-white/40 bg-white/60 hover:bg-white/80"
-              }`}
-            >
-              {selectedRoleData ? (
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg bg-gradient-to-br ${selectedRoleData.gradient} shadow-md`}
-                  >
-                    <selectedRoleData.icon className="w-5 h-5 text-white" />
-                  </div>
-                  <span className="font-semibold text-gray-700">
-                    {selectedRoleData.title}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-gray-400">Choose your role</span>
-              )}
-              <ChevronDown
-                className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-
-            {/* Dropdown Menu */}
-            {isOpen && (
-              <div className="absolute top-full mt-2 w-full backdrop-blur-xl bg-white/80 border border-white/30 rounded-2xl shadow-2xl overflow-hidden z-20">
-                {roles.map((role) => {
-                  const Icon = role.icon;
-                  return (
-                    <button
-                      key={role.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedRole(role.id);
-                        setIsOpen(false);
-                      }}
-                      className={`w-full px-4 py-3 flex items-center gap-3 transition-all ${
-                        selectedRole === role.id
-                          ? `bg-gradient-to-r ${role.gradient} text-white border-l-4 border-white/50 shadow-md`
-                          : "hover:bg-white/50"
-                      }`}
-                    >
-                      <div
-                        className={`p-2 rounded-lg ${selectedRole === role.id ? "bg-white/20" : `bg-gradient-to-br ${role.gradient}`} shadow-sm`}
-                      >
-                        <Icon className={`w-5 h-5 text-white`} />
-                      </div>
-                      <span
-                        className={`font-medium ${selectedRole === role.id ? "text-white" : "text-gray-700"}`}
-                      >
-                        {role.title}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Remember Me */}
+          {/* Remember Me & Forgot Password */}
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer group">
               <input
                 type="checkbox"
                 className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                disabled={loading}
               />
               <span className="text-sm text-gray-600 group-hover:text-gray-800">
                 Remember me
@@ -197,10 +147,25 @@ export default function Login() {
           {/* Login Button */}
           <button
             type="submit"
-            className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
           >
-            Sign In
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Signing In...
+              </>
+            ) : (
+              "Sign In"
+            )}
           </button>
+          <span>
+            <p>
+              ABC-015 <br />
+              hareeshgouthu@gmail.com <br />
+              SchoolAdmin@1234 <br />
+            </p>
+          </span>
         </form>
       </div>
     </div>

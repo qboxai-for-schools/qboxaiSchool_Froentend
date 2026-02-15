@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   School,
   Users,
@@ -11,8 +12,14 @@ import {
   GraduationCap,
   Edit,
   Trash2,
+  Search,
+  Loader2,
+  Download,
+  Eye,
+  FileDown,
 } from "lucide-react";
 import StatsCard from "../../components/StatsCard";
+import api from "../../services/api";
 import {
   BarChart,
   Bar,
@@ -46,69 +53,46 @@ const performanceData = [
   { subject: "PE", score: 87 },
 ];
 
-const classesList = [
-  {
-    id: 1,
-    name: "Grade 1-A",
-    teacher: "John Smith",
-    students: 35,
-    subject: "General",
-    schedule: "Mon-Fri, 8:00 AM",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Grade 2-B",
-    teacher: "Sarah Johnson",
-    students: 38,
-    subject: "General",
-    schedule: "Mon-Fri, 9:00 AM",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Grade 3-A",
-    teacher: "Mike Davis",
-    students: 42,
-    subject: "General",
-    schedule: "Mon-Fri, 8:00 AM",
-    status: "Active",
-  },
-  {
-    id: 4,
-    name: "Grade 4-C",
-    teacher: "Emily Brown",
-    students: 40,
-    subject: "General",
-    schedule: "Mon-Fri, 10:00 AM",
-    status: "Active",
-  },
-  {
-    id: 5,
-    name: "Grade 5-B",
-    teacher: "David Wilson",
-    students: 36,
-    subject: "General",
-    schedule: "Mon-Fri, 11:00 AM",
-    status: "Active",
-  },
-  {
-    id: 6,
-    name: "Grade 6-A",
-    teacher: "Lisa Anderson",
-    students: 39,
-    subject: "General",
-    schedule: "Mon-Fri, 8:00 AM",
-    status: "Inactive",
-  },
-];
-
 export default function Classes() {
+  const navigate = useNavigate();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [formData, setFormData] = useState({
     name: "",
-    teacher: "",
+    description: "",
   });
+
+  // Fetch classes from API
+  const fetchClasses = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get("/grades/grade_list", {
+        params: {
+          page: page,
+          page_size: 10,
+        },
+      });
+
+      const data = response.data;
+      setClasses(data.data || []);
+      setTotalRecords(data.total_records || 0);
+      setTotalPages(data.total_pages || 1);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClasses();
+  }, [page]);
 
   const handleInputChange = (e) => {
     setFormData({
@@ -117,24 +101,99 @@ export default function Classes() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("New Class:", formData);
-    setShowCreateForm(false);
-    setFormData({ name: "", teacher: "" });
+    try {
+      await api.post("/grades/create_grade", formData);
+      setShowCreateForm(false);
+      setFormData({ name: "", description: "" });
+      fetchClasses(); // Refresh the list
+    } catch (error) {
+      console.error("Error creating class:", error);
+      alert("Error creating grade. Please try again.");
+    }
   };
 
+  const handleViewDetails = (gradeId) => {
+    navigate(`/admin/classes/${gradeId}`);
+  };
+
+  // Handle active/inactive toggle
+  const handleToggleActive = async (classId, currentStatus) => {
+    try {
+      await api.patch(`/users/${classId}`, {
+        is_active: !currentStatus,
+      });
+      
+      // Update local state
+      setClasses(prevClasses =>
+        prevClasses.map(cls =>
+          cls.id === classId ? { ...cls, is_active: !currentStatus } : cls
+        )
+      );
+      
+      alert(`Grade ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
+    } catch (error) {
+      console.error("Error toggling grade status:", error);
+      alert("Error updating grade status. Please try again.");
+    }
+  };
+
+  // Handle bulk upload
   const handleBulkUpload = () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".csv,.xlsx,.xls,.json";
-    input.onchange = (e) => {
+    input.accept = ".csv,.xlsx,.xls";
+    input.onchange = async (e) => {
       const file = e.target.files[0];
-      console.log("Uploaded file:", file);
-      // Handle file upload logic here
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        setUploading(true);
+        const response = await api.post("/grades/bulk-upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        alert("Grades uploaded successfully!");
+        fetchClasses(); // Refresh the list
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        
+        if (error.code === 'ECONNABORTED') {
+          alert("Upload timeout! Please try with a smaller file or check your internet connection.");
+        } else {
+          alert(
+            error.response?.data?.message ||
+              "Error uploading file. Please check the format and try again.",
+          );
+        }
+      } finally {
+        setUploading(false);
+      }
     };
     input.click();
   };
+
+  // Download template from assets folder
+  const handleDownloadTemplate = () => {
+    const link = document.createElement("a");
+    link.href = "/assets/grades_bulk_upload_template.csv";
+    link.download = "grades_bulk_upload_template.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Filter classes based on search
+  const filteredClasses = classes.filter((classItem) =>
+    classItem.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
 
   return (
     <div className="p-8">
@@ -150,11 +209,29 @@ export default function Classes() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={handleBulkUpload}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20"
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-500/90 via-indigo-500/90 to-purple-500/90 text-white font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20"
+            title="Download CSV Template"
           >
-            <Upload className="w-5 h-5" />
-            Bulk Upload
+            <FileDown className="w-5 h-5" />
+            Download Template
+          </button>
+          <button
+            onClick={handleBulkUpload}
+            disabled={uploading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                Bulk Upload
+              </>
+            )}
           </button>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -169,25 +246,30 @@ export default function Classes() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
-          title="Total Classes"
-          value="24"
+          title="Total Grades"
+          value={totalRecords.toString()}
           change="+2"
           icon={School}
           trend="up"
           color="blue"
         />
         <StatsCard
-          title="Active Classes"
-          value="22"
-          change="+1"
+          title="Total Sections"
+          value={classes
+            .reduce((acc, cls) => acc + cls.sections_count, 0)
+            .toString()}
+          change="+5"
           icon={BookOpen}
           trend="up"
           color="green"
         />
         <StatsCard
-          title="Avg Class Size"
-          value="38"
-          change="+3"
+          title="Avg Sections"
+          value={Math.round(
+            classes.reduce((acc, cls) => acc + cls.sections_count, 0) /
+              (classes.length || 1),
+          ).toString()}
+          change="+1"
           icon={Users}
           trend="up"
           color="purple"
@@ -204,100 +286,172 @@ export default function Classes() {
 
       {/* Classes List */}
       <div className="glass-card rounded-2xl p-6 mb-8 backdrop-blur-xl bg-white/40 border border-white/30 shadow-xl">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">
-          Classes List
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200/50">
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Class Name
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Teacher
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Students
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Subject
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Schedule
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Status
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {classesList.map((classItem) => (
-                <tr
-                  key={classItem.id}
-                  className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300"
-                >
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-semibold shadow-md">
-                        {classItem.name.split("-")[0].replace("Grade ", "")}
-                      </div>
-                      <span className="font-medium text-gray-800">
-                        {classItem.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-violet-500" />
-                      <span className="text-gray-700">{classItem.teacher}</span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4 text-blue-500" />
-                      <span className="font-semibold text-gray-800">
-                        {classItem.students}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-700 text-sm font-medium border border-purple-500/30">
-                      {classItem.subject}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-gray-600 text-sm">
-                    {classItem.schedule}
-                  </td>
-                  <td className="py-4 px-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        classItem.status === "Active"
-                          ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-700 border border-emerald-500/30"
-                          : "bg-gradient-to-r from-gray-500/20 to-gray-600/20 text-gray-700 border border-gray-500/30"
-                      }`}
-                    >
-                      {classItem.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">Grades List</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search grades..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 w-64 bg-white/50"
+            />
+          </div>
         </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+            <span className="ml-3 text-gray-600">Loading classes...</span>
+          </div>
+        ) : filteredClasses.length === 0 ? (
+          <div className="text-center py-20">
+            <School className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No classes found</p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200/50">
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Grade Name
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Description
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Sections Count
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Status
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Created At
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredClasses.map((classItem) => (
+                    <tr
+                      key={classItem.id}
+                      className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300"
+                    >
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-semibold shadow-md">
+                            {classItem.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-gray-800">
+                            {classItem.name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-gray-700">
+                        {classItem.description || "N/A"}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-blue-500" />
+                          <span className="font-semibold text-gray-800">
+                            {classItem.sections_count}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            sections
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            classItem.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {classItem.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-gray-600 text-sm">
+                        {new Date(classItem.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex gap-2">
+                          {/* Toggle Active/Inactive Button */}
+                          <button
+                            onClick={() => handleToggleActive(classItem.id, classItem.is_active)}
+                            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                              classItem.is_active
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                            title={classItem.is_active ? "Deactivate" : "Activate"}
+                          >
+                            <span
+                              className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                                classItem.is_active
+                                  ? "translate-x-7"
+                                  : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+
+                          <button
+                            onClick={() => handleViewDetails(classItem.id)}
+                            className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 text-violet-600 hover:from-violet-500/30 hover:to-purple-500/30 transition-all duration-300 backdrop-blur-md border border-violet-500/30"
+                            title="Edit"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-6">
+                <button
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       {/* Charts */}
@@ -374,7 +528,7 @@ export default function Classes() {
           <div className="glass-card rounded-2xl p-8 max-w-md w-full backdrop-blur-xl bg-white/90 border border-white/30 shadow-2xl animate-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-600 bg-clip-text text-transparent">
-                Create New Class
+                Create New Grade
               </h2>
               <button
                 onClick={() => setShowCreateForm(false)}
@@ -387,7 +541,7 @@ export default function Classes() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Class Name
+                  Grade Name
                 </label>
                 <div className="relative">
                   <School className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -398,25 +552,25 @@ export default function Classes() {
                     onChange={handleInputChange}
                     required
                     className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/50 border border-gray-300/50 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all backdrop-blur-sm"
-                    placeholder="e.g., Grade 1-A"
+                    placeholder="e.g., LKG, UKG, 1, 2"
                   />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Teacher
+                  Description
                 </label>
                 <div className="relative">
-                  <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="teacher"
-                    value={formData.teacher}
+                  <BookOpen className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                  <textarea
+                    name="description"
+                    value={formData.description}
                     onChange={handleInputChange}
                     required
+                    rows="3"
                     className="w-full pl-11 pr-4 py-3 rounded-xl bg-white/50 border border-gray-300/50 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all backdrop-blur-sm"
-                    placeholder="Teacher name"
+                    placeholder="e.g., Lower Kindergarten, 1st Standard"
                   />
                 </div>
               </div>
@@ -433,7 +587,7 @@ export default function Classes() {
                   type="submit"
                   className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 text-white font-medium shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 hover:scale-105 transition-all duration-300"
                 >
-                  Create Class
+                  Create Grade
                 </button>
               </div>
             </form>

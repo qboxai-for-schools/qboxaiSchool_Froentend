@@ -29,7 +29,7 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const renderDashboard = () => {
-    if (user === "admin") {
+    if (user?.userType === "admin") {
       return (
         <Routes>
           <Route path="/" element={<AdminDashboard />} />
@@ -42,7 +42,7 @@ export default function Dashboard() {
           <Route path="/settings" element={<Settings />} />
         </Routes>
       );
-    } else if (user === "teacher") {
+    } else if (user?.userType === "teacher") {
       return (
         <Routes>
           <Route path="/" element={<TeacherDashboard />} />
@@ -54,7 +54,7 @@ export default function Dashboard() {
           <Route path="/analytics" element={<TeacherAnalytics />} />
         </Routes>
       );
-    } else if (user === "student") {
+    } else if (user?.userType === "student") {
       return (
         <Routes>
           <Route path="/" element={<StudentDashboard />} />
