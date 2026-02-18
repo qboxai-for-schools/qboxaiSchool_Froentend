@@ -1,0 +1,4 @@
+employee_id,full_name,email,phone,qualification,specialization
+EMP001,Suresh Rao,suresh.rao@testschool.com,9876543210,MSc Mathematics,Mathematics
+EMP002,Anita Sharma,anita.sharma@testschool.com,9876543211,MA English,English
+EMP003,Ravi Kumar,ravi.kumar@testschool.com,9876543212,BEd Science,Science

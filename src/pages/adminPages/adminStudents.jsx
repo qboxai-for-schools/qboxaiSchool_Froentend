@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import StatsCard from "../../components/StatsCard";
 import api from "../../services/api";
+import { toast, Toaster } from "sonner";
 import {
   AreaChart,
   Area,
@@ -211,6 +212,7 @@ export default function Students() {
       setLoading(false);
     } catch (error) {
       console.error("Error fetching students:", error);
+      toast.error("Failed to load students. Please try again.");
       setLoading(false);
     }
   };
@@ -301,6 +303,7 @@ export default function Students() {
       setUploadSuccess(
         response.data.message || "Students uploaded successfully!",
       );
+      toast.success("Students uploaded successfully!");
       setUploadFile(null);
 
       // Refresh the students list after successful upload
@@ -310,11 +313,11 @@ export default function Students() {
       }, 2000);
     } catch (error) {
       console.error("Error uploading file:", error);
-      setUploadError(
-        error.response?.data?.detail ||
+      const errorMessage = error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to upload file. Please try again.",
-      );
+          "Failed to upload file. Please try again.";
+      setUploadError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadLoading(false);
     }
@@ -322,14 +325,19 @@ export default function Students() {
 
   // Handle demo file download
   const handleDownloadDemo = () => {
-    // You can either:
-    // 1. Download from public/assets folder
-    const link = document.createElement("a");
-    link.href = "/assets/students_bulk_upload_demo.csv"; // Place your demo file in public/assets/
-    link.download = "students_bulk_upload_demo.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      // You can either:
+      // 1. Download from public/assets folder
+      const link = document.createElement("a");
+      link.href = "/assets/students_bulk_upload_demo.csv"; // Place your demo file in public/assets/
+      link.download = "students_bulk_upload_demo.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Template downloaded successfully!");
+    } catch (error) {
+      toast.error("Failed to download template. Please try again.");
+    }
 
     // OR 2. Create dynamic CSV data
     // const csvContent = `Full Name,Email,Phone,Gender,Date of Birth,Admission Number,Roll Number,Address,Guardian Name,Guardian Phone,Guardian Email
@@ -371,17 +379,21 @@ export default function Students() {
       ).length;
       setStats({ ...stats, activeStudents: activeCount });
 
+      toast.success(
+        `Student ${!currentStatus ? "activated" : "deactivated"} successfully!`
+      );
       setToggleLoading({ ...toggleLoading, [studentId]: false });
     } catch (error) {
       console.error("Error toggling student status:", error);
+      toast.error("Failed to update student status. Please try again.");
       setToggleLoading({ ...toggleLoading, [studentId]: false });
-      alert("Failed to update student status. Please try again.");
     }
   };
 
   return (
     <div className="p-8">
-      {/* Header with Buttons */}
+      <Toaster position="top-right" richColors />
+      /* Header with Buttons */
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">

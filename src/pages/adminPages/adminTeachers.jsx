@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   TrendingUp,
@@ -13,90 +13,13 @@ import {
   Edit,
   Trash2,
   Activity,
+  Loader2,
+  Power,
+  FileDown,
 } from "lucide-react";
+import api from "../../services/api";
 import StatsCard from "../../components/StatsCard";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-
-const performanceData = [
-  { name: "John Smith", rating: 4.8, classes: 12 },
-  { name: "Sarah Johnson", rating: 4.9, classes: 15 },
-  { name: "Mike Davis", rating: 4.7, classes: 10 },
-  { name: "Emily Brown", rating: 4.6, classes: 13 },
-  { name: "David Wilson", rating: 4.9, classes: 14 },
-  { name: "Lisa Anderson", rating: 4.8, classes: 11 },
-];
-
-const attendanceData = [
-  { month: "Jan", present: 95 },
-  { month: "Feb", present: 93 },
-  { month: "Mar", present: 96 },
-  { month: "Apr", present: 94 },
-  { month: "May", present: 97 },
-  { month: "Jun", present: 95 },
-];
-
-const teachersList = [
-  {
-    id: 1,
-    name: "John Smith",
-    email: "john.smith@school.com",
-    phone: "+1 234-567-8901",
-    subject: "Mathematics",
-    rating: 4.8,
-    classes: 12,
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    email: "sarah.j@school.com",
-    phone: "+1 234-567-8902",
-    subject: "English",
-    rating: 4.9,
-    classes: 15,
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Mike Davis",
-    email: "mike.d@school.com",
-    phone: "+1 234-567-8903",
-    subject: "Science",
-    rating: 4.7,
-    classes: 10,
-    status: "Active",
-  },
-  {
-    id: 4,
-    name: "Emily Brown",
-    email: "emily.b@school.com",
-    phone: "+1 234-567-8904",
-    subject: "History",
-    rating: 4.6,
-    classes: 13,
-    status: "On Leave",
-  },
-  {
-    id: 5,
-    name: "David Wilson",
-    email: "david.w@school.com",
-    phone: "+1 234-567-8905",
-    subject: "Physics",
-    rating: 4.9,
-    classes: 14,
-    status: "Active",
-  },
-];
+import { toast, Toaster } from "sonner";
 
 export default function Teachers() {
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -106,6 +29,73 @@ export default function Teachers() {
     phone: "",
     subject: "",
   });
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [totalTeachers, setTotalTeachers] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [togglingId, setTogglingId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const pageSize = 20;
+
+  // Fetch teachers from API
+  const fetchTeachers = async (page = 1) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/users/list-users`, {
+        params: {
+          page: page,
+          page_size: pageSize,
+          role: "teacher",
+        },
+      });
+
+      setTeachers(response.data.items);
+      setTotalTeachers(response.data.total);
+      setCurrentPage(response.data.page);
+      setTotalPages(response.data.total_pages);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      toast.error("Failed to load teachers. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  useEffect(() => {
+    fetchTeachers(currentPage);
+  }, [currentPage]);
+
+  // Toggle teacher active/inactive status
+  const handleToggleStatus = async (teacherId, currentStatus) => {
+    try {
+      setTogglingId(teacherId);
+      await api.patch(`/users/${teacherId}`, {
+        is_active: !currentStatus,
+      });
+
+      // Update the local state
+      setTeachers((prevTeachers) =>
+        prevTeachers.map((teacher) =>
+          teacher.id === teacherId
+            ? { ...teacher, is_active: !currentStatus }
+            : teacher,
+        ),
+      );
+      toast.success(
+        `Teacher ${!currentStatus ? "activated" : "deactivated"} successfully!`,
+      );
+    } catch (error) {
+      console.error("Error toggling teacher status:", error);
+      toast.error("Failed to update teacher status. Please try again.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -121,20 +111,67 @@ export default function Teachers() {
     setFormData({ name: "", email: "", phone: "", subject: "" });
   };
 
+  // Handle bulk upload
   const handleBulkUpload = () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".csv,.xlsx,.xls";
-    input.onchange = (e) => {
+    input.onchange = async (e) => {
       const file = e.target.files[0];
-      console.log("Uploaded file:", file);
-      // Handle file upload logic here
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        setUploading(true);
+        const response = await api.post("/bulk/teachers", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          timeout: 120000, // 2 minutes timeout
+        });
+
+        toast.success("Teachers uploaded successfully!");
+        fetchTeachers(); // Refresh the list
+      } catch (error) {
+        console.error("Error uploading file:", error);
+
+        if (error.code === "ECONNABORTED") {
+          toast.error(
+            "Upload timeout! Please try with a smaller file or check your internet connection.",
+          );
+        } else {
+          toast.error(
+            error.response?.data?.message ||
+              "Error uploading file. Please check the format and try again.",
+          );
+        }
+      } finally {
+        setUploading(false);
+      }
     };
     input.click();
   };
 
+  // Download template from assets folder
+  const handleDownloadTemplate = () => {
+    try {
+      const link = document.createElement("a");
+      link.href = "/assets/teachers_bulk_upload_template.csv";
+      link.download = "teachers_bulk_upload_template.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Template downloaded successfully!");
+    } catch (error) {
+      toast.error("Failed to download template. Please try again.");
+    }
+  };
+
   return (
     <div className="p-8">
+      <Toaster position="top-right" richColors />
       {/* Header with Buttons */}
       <div className="mb-8 flex justify-between items-center">
         <div>
@@ -147,11 +184,29 @@ export default function Teachers() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={handleBulkUpload}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20"
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-blue-500/90 via-indigo-500/90 to-purple-500/90 text-white font-medium shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20"
+            title="Download CSV Template"
           >
-            <Upload className="w-5 h-5" />
-            Bulk Upload
+            <FileDown className="w-5 h-5" />
+            Download Template
+          </button>
+          <button
+            onClick={handleBulkUpload}
+            disabled={uploading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-br from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 backdrop-blur-md border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="w-5 h-5" />
+                Bulk Upload
+              </>
+            )}
           </button>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -167,34 +222,42 @@ export default function Teachers() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatsCard
           title="Total Teachers"
-          value="48"
-          change="+3"
+          value={loading ? "..." : totalTeachers.toString()}
+          change="-"
           icon={Users}
           trend="up"
           color="blue"
         />
         <StatsCard
-          title="Active Today"
-          value="45"
-          change="+2"
+          title="Active Teachers"
+          value={
+            loading
+              ? "..."
+              : teachers.filter((t) => t.is_active).length.toString()
+          }
+          change="-"
           icon={Activity}
           trend="up"
           color="blue"
         />
         <StatsCard
-          title="Avg Rating"
-          value="4.8"
-          change="+0.2"
-          icon={Award}
-          trend="up"
+          title="Inactive"
+          value={
+            loading
+              ? "..."
+              : teachers.filter((t) => !t.is_active).length.toString()
+          }
+          change="-"
+          icon={Calendar}
+          trend="down"
           color="purple"
         />
         <StatsCard
-          title="On Leave"
-          value="3"
-          change="-1"
-          icon={Calendar}
-          trend="down"
+          title="Current Page"
+          value={loading ? "..." : `${currentPage}/${totalPages}`}
+          change="-"
+          icon={BookOpen}
+          trend="up"
           color="purple"
         />
       </div>
@@ -202,172 +265,239 @@ export default function Teachers() {
       {/* Teachers List */}
       <div className="glass-card rounded-2xl p-6 mb-8 backdrop-blur-xl bg-white/40 border border-white/30 shadow-xl">
         <h2 className="text-xl font-semibold text-gray-800 mb-6">
-          Teachers List
+          Teachers List ({totalTeachers} Total)
         </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200/50">
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Name
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Email
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Phone
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Subject
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Rating
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Classes
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Status
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {teachersList.map((teacher) => (
-                <tr
-                  key={teacher.id}
-                  className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300"
-                >
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold shadow-md">
-                        {teacher.name.charAt(0)}
-                      </div>
-                      <span className="font-medium text-gray-800">
-                        {teacher.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-gray-600">{teacher.email}</td>
-                  <td className="py-4 px-4 text-gray-600">{teacher.phone}</td>
-                  <td className="py-4 px-4">
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 text-sm font-medium border border-blue-500/30">
-                      {teacher.subject}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-1">
-                      <Award className="w-4 h-4 text-yellow-500" />
-                      <span className="font-semibold text-gray-800">
-                        {teacher.rating}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-gray-700 font-medium">
-                    {teacher.classes}
-                  </td>
-                  <td className="py-4 px-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        teacher.status === "Active"
-                          ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-700 border border-emerald-500/30"
-                          : "bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-700 border border-orange-500/30"
-                      }`}
-                    >
-                      {teacher.status}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+            <span className="ml-3 text-gray-600">Loading teachers...</span>
+          </div>
+        ) : teachers.length === 0 ? (
+          <div className="text-center py-20 text-gray-500">
+            No teachers found
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200/50">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Employee ID
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Name
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Email
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Phone
+                  </th>
+
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Specialization
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Qualification
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Status
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {teachers.map((teacher) => (
+                  <tr
+                    key={teacher.id}
+                    className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300"
+                  >
+                    <td className="py-4 px-4">
+                      <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-700 text-sm font-medium border border-purple-500/30">
+                        {teacher.teacher_profile?.employee_id || "N/A"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold shadow-md">
+                          {teacher.full_name?.charAt(0).toUpperCase() || "T"}
+                        </div>
+                        <span className="font-medium text-gray-800">
+                          {teacher.full_name || "N/A"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-gray-600">
+                      {teacher.email || "N/A"}
+                    </td>
+                    <td className="py-4 px-4 text-gray-600">
+                      {teacher.phone || "N/A"}
+                    </td>
+
+                    <td className="py-4 px-4">
+                      <span className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-700 text-sm font-medium border border-blue-500/30">
+                        {teacher.teacher_profile?.specialization || "N/A"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-gray-700">
+                      {teacher.teacher_profile?.qualification || "N/A"}
+                    </td>
+                    <td className="py-4 px-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          teacher.is_active
+                            ? "bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-700 border border-emerald-500/30"
+                            : "bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-700 border border-orange-500/30"
+                        }`}
+                      >
+                        {teacher.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            handleToggleStatus(teacher.id, teacher.is_active)
+                          }
+                          disabled={togglingId === teacher.id}
+                          className={`p-2 rounded-lg transition-all duration-300 backdrop-blur-md border ${
+                            teacher.is_active
+                              ? "bg-gradient-to-br from-emerald-500/20 to-green-500/20 text-emerald-600 hover:from-emerald-500/30 hover:to-green-500/30 border-emerald-500/30"
+                              : "bg-gradient-to-br from-red-500/20 to-rose-500/20 text-red-600 hover:from-red-500/30 hover:to-rose-500/30 border-red-500/30"
+                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          title={teacher.is_active ? "Deactivate" : "Activate"}
+                        >
+                          {togglingId === teacher.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Power className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mt-6">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() =>
+                setCurrentPage(Math.min(totalPages, currentPage + 1))
+              }
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Charts */}
+      {/* Teacher Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/40 border border-white/30 shadow-xl">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">
-            Teacher Performance
+            Teachers by Specialization
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={performanceData}>
-              <defs>
-                <linearGradient id="teacherBar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#6366f1" stopOpacity={0.6} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis
-                dataKey="name"
-                tick={{ fontSize: 12 }}
-                angle={-15}
-                textAnchor="end"
-                height={80}
-              />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(139, 92, 246, 0.2)",
-                  borderRadius: "12px",
-                }}
-              />
-              <Bar
-                dataKey="rating"
-                fill="url(#teacherBar)"
-                radius={[8, 8, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {teachers.reduce((acc, teacher) => {
+                const spec =
+                  teacher.teacher_profile?.specialization || "Not Specified";
+                acc[spec] = (acc[spec] || 0) + 1;
+                return acc;
+              }, {}) &&
+                Object.entries(
+                  teachers.reduce((acc, teacher) => {
+                    const spec =
+                      teacher.teacher_profile?.specialization ||
+                      "Not Specified";
+                    acc[spec] = (acc[spec] || 0) + 1;
+                    return acc;
+                  }, {}),
+                ).map(([spec, count]) => (
+                  <div
+                    key={spec}
+                    className="flex items-center justify-between p-3 rounded-lg bg-white/50"
+                  >
+                    <span className="font-medium text-gray-700">{spec}</span>
+                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 text-violet-700 font-semibold">
+                      {count}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
 
         <div className="glass-card rounded-2xl p-6 backdrop-blur-xl bg-white/40 border border-white/30 shadow-xl">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">
-            Attendance Trend
+            Recent Registrations
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={attendanceData}>
-              <defs>
-                <linearGradient id="attendanceLine" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.8} />
-                  <stop offset="100%" stopColor="#059669" stopOpacity={0.6} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="month" />
-              <YAxis domain={[90, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(255, 255, 255, 0.9)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid rgba(16, 185, 129, 0.2)",
-                  borderRadius: "12px",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="present"
-                stroke="url(#attendanceLine)"
-                strokeWidth={3}
-                dot={{ fill: "#10b981", r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {teachers.slice(0, 5).map((teacher) => (
+                <div
+                  key={teacher.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-white/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-semibold text-sm">
+                      {teacher.full_name?.charAt(0).toUpperCase() || "T"}
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">
+                        {teacher.full_name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {teacher.teacher_profile?.specialization || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">
+                      {teacher.created_date}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {teacher.created_time}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -23,7 +23,7 @@ const menuItems = {
     { icon: Users, label: "Teachers", path: "/dashboard/teachers" },
     { icon: GraduationCap, label: "Students", path: "/dashboard/students" },
     { icon: School, label: "Classes", path: "/dashboard/classes" },
-    { icon: BookOpen, label: "Courses", path: "/dashboard/courses" },
+    { icon: BookOpen, label: "Subjects", path: "/dashboard/courses" },
     { icon: Calendar, label: "Schedule", path: "/dashboard/schedule" },
     { icon: BarChart3, label: "Reports", path: "/dashboard/reports" },
     { icon: Settings, label: "Settings", path: "/dashboard/settings" },

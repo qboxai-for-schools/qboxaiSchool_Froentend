@@ -27,6 +27,7 @@ export const loginUser = async (schoolCode, email, password) => {
     return {
       success: false,
       error:
+        error.response?.data?.detail ||
         error.response?.data?.message ||
         "Login failed. Please check your credentials.",
     };

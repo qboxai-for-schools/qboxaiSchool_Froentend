@@ -118,27 +118,6 @@ export default function Classes() {
     navigate(`/admin/classes/${gradeId}`);
   };
 
-  // Handle active/inactive toggle
-  const handleToggleActive = async (classId, currentStatus) => {
-    try {
-      await api.patch(`/users/${classId}`, {
-        is_active: !currentStatus,
-      });
-      
-      // Update local state
-      setClasses(prevClasses =>
-        prevClasses.map(cls =>
-          cls.id === classId ? { ...cls, is_active: !currentStatus } : cls
-        )
-      );
-      
-      alert(`Grade ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
-    } catch (error) {
-      console.error("Error toggling grade status:", error);
-      alert("Error updating grade status. Please try again.");
-    }
-  };
-
   // Handle bulk upload
   const handleBulkUpload = () => {
     const input = document.createElement("input");
@@ -164,9 +143,11 @@ export default function Classes() {
         fetchClasses(); // Refresh the list
       } catch (error) {
         console.error("Error uploading file:", error);
-        
-        if (error.code === 'ECONNABORTED') {
-          alert("Upload timeout! Please try with a smaller file or check your internet connection.");
+
+        if (error.code === "ECONNABORTED") {
+          alert(
+            "Upload timeout! Please try with a smaller file or check your internet connection.",
+          );
         } else {
           alert(
             error.response?.data?.message ||
@@ -326,12 +307,6 @@ export default function Classes() {
                       Sections Count
                     </th>
                     <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                      Status
-                    </th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                      Created At
-                    </th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
                       Actions
                     </th>
                   </tr>
@@ -340,7 +315,8 @@ export default function Classes() {
                   {filteredClasses.map((classItem) => (
                     <tr
                       key={classItem.id}
-                      className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300"
+                      onClick={() => handleViewDetails(classItem.id)}
+                      className="border-b border-gray-200/30 hover:bg-gradient-to-r hover:from-violet-500/10 hover:via-fuchsia-500/10 hover:to-pink-500/10 transition-all duration-300 cursor-pointer"
                     >
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
@@ -367,40 +343,10 @@ export default function Classes() {
                         </div>
                       </td>
                       <td className="py-4 px-4">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            classItem.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                        <div
+                          className="flex gap-2"
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          {classItem.is_active ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-gray-600 text-sm">
-                        {new Date(classItem.created_at).toLocaleDateString()}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex gap-2">
-                          {/* Toggle Active/Inactive Button */}
-                          <button
-                            onClick={() => handleToggleActive(classItem.id, classItem.is_active)}
-                            className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                              classItem.is_active
-                                ? "bg-green-500"
-                                : "bg-red-500"
-                            }`}
-                            title={classItem.is_active ? "Deactivate" : "Activate"}
-                          >
-                            <span
-                              className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                                classItem.is_active
-                                  ? "translate-x-7"
-                                  : "translate-x-1"
-                              }`}
-                            />
-                          </button>
-
                           <button
                             onClick={() => handleViewDetails(classItem.id)}
                             className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30"
