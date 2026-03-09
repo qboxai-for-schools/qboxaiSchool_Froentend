@@ -17,6 +17,7 @@ import {
   Download,
   Eye,
   FileDown,
+  ListChecks,
 } from "lucide-react";
 import StatsCard from "../../components/StatsCard";
 import api from "../../services/api";
@@ -68,6 +69,14 @@ export default function Classes() {
     description: "",
   });
 
+  // Add Subject state
+  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
+  const [selectedGradeId, setSelectedGradeId] = useState(null);
+  const [subjectDropdown, setSubjectDropdown] = useState([]);
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState([]);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [loadingDropdown, setLoadingDropdown] = useState(false);
+
   // Fetch classes from API
   const fetchClasses = async () => {
     try {
@@ -116,6 +125,65 @@ export default function Classes() {
 
   const handleViewDetails = (gradeId) => {
     navigate(`/admin/classes/${gradeId}`);
+  };
+
+  const handleViewSubjects = (gradeId) => {
+    navigate(`/admin/classes/${gradeId}/subjects`);
+  };
+
+  const fetchSubjectDropdown = async () => {
+    try {
+      setLoadingDropdown(true);
+      const response = await api.get("/grade-subjects/subjects/dropdown");
+      setSubjectDropdown(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Error fetching subject dropdown:", error);
+    } finally {
+      setLoadingDropdown(false);
+    }
+  };
+
+  const handleOpenAddSubject = async (gradeId) => {
+    setSelectedGradeId(gradeId);
+    setSelectedSubjectIds([]);
+    setShowAddSubjectModal(true);
+    if (subjectDropdown.length === 0) {
+      await fetchSubjectDropdown();
+    }
+  };
+
+  const toggleSubjectSelection = (subjectId) => {
+    setSelectedSubjectIds((prev) =>
+      prev.includes(subjectId)
+        ? prev.filter((id) => id !== subjectId)
+        : [...prev, subjectId],
+    );
+  };
+
+  const handleSubmitSubject = async (e) => {
+    e.preventDefault();
+    if (!selectedSubjectIds.length || !selectedGradeId) return;
+    try {
+      setAddingSubject(true);
+      await api.post("/grade-subjects", {
+        mappings: selectedSubjectIds.map((subject_id) => ({
+          grade_id: selectedGradeId,
+          subject_id,
+        })),
+      });
+      setShowAddSubjectModal(false);
+      setSelectedSubjectIds([]);
+      setSelectedGradeId(null);
+      alert("Subject(s) added successfully!");
+    } catch (error) {
+      console.error("Error adding subject:", error);
+      alert(
+        error.response?.data?.message ||
+          "Error adding subject. Please try again.",
+      );
+    } finally {
+      setAddingSubject(false);
+    }
   };
 
   // Handle bulk upload
@@ -307,6 +375,9 @@ export default function Classes() {
                       Sections Count
                     </th>
                     <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                      Subjects
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-700">
                       Actions
                     </th>
                   </tr>
@@ -340,6 +411,29 @@ export default function Classes() {
                           <span className="text-sm text-gray-500">
                             sections
                           </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div
+                          className="flex gap-2 flex-wrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => handleOpenAddSubject(classItem.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-700 hover:from-emerald-500/30 hover:to-teal-500/30 transition-all duration-300 backdrop-blur-md border border-emerald-500/30 text-xs font-medium"
+                            title="Add Subject"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Add Subject
+                          </button>
+                          <button
+                            onClick={() => handleViewSubjects(classItem.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20 text-amber-700 hover:from-amber-500/30 hover:to-orange-500/30 transition-all duration-300 backdrop-blur-md border border-amber-500/30 text-xs font-medium"
+                            title="See Subjects"
+                          >
+                            <ListChecks className="w-3.5 h-3.5" />
+                            See Subjects
+                          </button>
                         </div>
                       </td>
                       <td className="py-4 px-4">
@@ -467,6 +561,96 @@ export default function Classes() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Add Subject Modal */}
+      {showAddSubjectModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card rounded-2xl p-8 max-w-md w-full backdrop-blur-xl bg-white/90 border border-white/30 shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
+                Add Subject to Grade
+              </h2>
+              <button
+                onClick={() => setShowAddSubjectModal(false)}
+                className="p-2 rounded-lg hover:bg-gradient-to-br hover:from-red-500/20 hover:to-pink-500/20 transition-all duration-300"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitSubject} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Subjects
+                  {selectedSubjectIds.length > 0 && (
+                    <span className="ml-2 text-xs font-normal text-emerald-600">
+                      ({selectedSubjectIds.length} selected)
+                    </span>
+                  )}
+                </label>
+                {loadingDropdown ? (
+                  <div className="flex items-center gap-2 text-gray-500 py-3">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading subjects...</span>
+                  </div>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto rounded-xl border border-gray-300/50 bg-white/50 backdrop-blur-sm divide-y divide-gray-100">
+                    {subjectDropdown.length === 0 ? (
+                      <p className="text-sm text-gray-500 p-3">
+                        No subjects available.
+                      </p>
+                    ) : (
+                      subjectDropdown.map((subject) => (
+                        <label
+                          key={subject.id}
+                          className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-emerald-50 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSubjectIds.includes(subject.id)}
+                            onChange={() => toggleSubjectSelection(subject.id)}
+                            className="w-4 h-4 rounded accent-emerald-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {subject.label}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSubjectModal(false)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-br from-gray-500/20 to-gray-600/20 text-gray-700 font-medium hover:from-gray-500/30 hover:to-gray-600/30 transition-all duration-300 backdrop-blur-md border border-gray-500/30"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingSubject || !selectedSubjectIds.length}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 text-white font-medium shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {addingSubject ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Add Subject
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create Class Modal */}
       {showCreateForm && (

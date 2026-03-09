@@ -9,7 +9,8 @@ import { getStoredUserData, mapRoleToUserType } from "./utils/auth";
 import { logoutUser } from "./services/authService";
 import StudentDetail from "./pages/adminPages/StudentDetail";
 import ClassDetails from "./pages/adminPages/adminClassDetails";
-
+import ClassSubjects from "./pages/adminPages/adminClassSubjects";
+import ClassSubjectSyllabus from "./pages/adminPages/adminClassSubjectSyllabus";
 export const AuthContext = createContext({
   user: null,
   isAuthenticated: false,
@@ -96,6 +97,22 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <ClassDetails />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/classes/:id/subjects"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ClassSubjects />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/classes/:classId/subjects/:gradeSubjectId/syllabus"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ClassSubjectSyllabus />
               </ProtectedRoute>
             }
           />

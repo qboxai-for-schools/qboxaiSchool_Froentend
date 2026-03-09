@@ -313,9 +313,10 @@ export default function Students() {
       }, 2000);
     } catch (error) {
       console.error("Error uploading file:", error);
-      const errorMessage = error.response?.data?.detail ||
-          error.response?.data?.message ||
-          "Failed to upload file. Please try again.";
+      const errorMessage =
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        "Failed to upload file. Please try again.";
       setUploadError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -380,7 +381,7 @@ export default function Students() {
       setStats({ ...stats, activeStudents: activeCount });
 
       toast.success(
-        `Student ${!currentStatus ? "activated" : "deactivated"} successfully!`
+        `Student ${!currentStatus ? "activated" : "deactivated"} successfully!`,
       );
       setToggleLoading({ ...toggleLoading, [studentId]: false });
     } catch (error) {
@@ -393,7 +394,6 @@ export default function Students() {
   return (
     <div className="p-8">
       <Toaster position="top-right" richColors />
-      /* Header with Buttons */
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">

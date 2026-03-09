@@ -161,8 +161,10 @@ export default function Login() {
           </button>
           <span>
             <p>
-              GVIS-2026 <br />
-              hareeshgouthu@gmail.com <br />
+              ABC-015
+              <br />
+              harishkumargouthu143@gmail.com
+              <br />
               SchoolAdmin@12345
               <br />
             </p>

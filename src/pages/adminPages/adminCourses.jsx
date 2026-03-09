@@ -220,51 +220,45 @@ export default function Courses() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {subjects.map((subject) => (
               <div
                 key={subject.id}
-                className="group relative glass-card rounded-xl p-6 backdrop-blur-xl bg-white/60 border border-white/40 shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
+                className="group relative glass-card rounded-lg p-4 backdrop-blur-xl bg-white/60 border border-white/40 shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300"
               >
                 {/* Subject Icon/Initial */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-pink-500 flex items-center justify-center text-white font-bold text-base shadow-lg">
                     {subject.label?.charAt(0) || "S"}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <button
                       onClick={() => fetchSubjectDetails(subject.id)}
-                      className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30 opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-600 hover:from-blue-500/30 hover:to-cyan-500/30 transition-all duration-300 backdrop-blur-md border border-blue-500/30 opacity-0 group-hover:opacity-100"
                       title="View Details"
                     >
-                      <Eye className="w-4 h-4" />
+                      <Eye className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteSubject(subject.id)}
-                      className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30 opacity-0 group-hover:opacity-100"
+                      className="p-1.5 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20 text-red-600 hover:from-red-500/30 hover:to-pink-500/30 transition-all duration-300 backdrop-blur-md border border-red-500/30 opacity-0 group-hover:opacity-100"
                       title="Delete Subject"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Subject Name */}
-                <h3 className="text-xl font-bold text-gray-800 mb-2">
+                <h3 className="text-base font-bold text-gray-800 mb-2">
                   {subject.label}
                 </h3>
 
-                {/* Subject ID Badge */}
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                  <Code className="w-3 h-3" />
-                  <span className="font-mono text-xs">{subject.id}</span>
-                </div>
-
                 {/* Footer */}
-                <div className="pt-4 border-t border-gray-200/50">
+                <div className="pt-3 border-t border-gray-200/50">
                   <button
                     onClick={() => fetchSubjectDetails(subject.id)}
-                    className="w-full text-center text-sm font-medium text-violet-600 hover:text-violet-700 transition-colors"
+                    className="w-full text-center text-xs font-medium text-violet-600 hover:text-violet-700 transition-colors"
                   >
                     View Details →
                   </button>
